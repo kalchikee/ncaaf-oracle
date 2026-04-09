@@ -1,0 +1,76 @@
+name: Weekly Predictions
+
+on:
+  schedule:
+    # Tuesday 10 AM ET (2 PM UTC)
+    - cron: '0 14 * * 2'
+  workflow_dispatch:
+    inputs:
+      week:
+        description: 'Override week number (optional)'
+        required: false
+      season:
+        description: 'Override season year (optional)'
+        required: false
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Download database artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncaaf-oracle-db
+          path: data/
+        continue-on-error: true  # First run: no artifact yet
+
+      - name: Download model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncaaf-oracle-model
+          path: data/model/
+        continue-on-error: true  # First run: will use Monte Carlo fallback
+
+      - name: Check season gate and run predictions
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SEASON_YEAR: ${{ vars.SEASON_YEAR || '2025' }}
+        run: |
+          ARGS="--alert picks"
+          if [ -n "${{ github.event.inputs.week }}" ]; then
+            ARGS="$ARGS --week ${{ github.event.inputs.week }}"
+          fi
+          if [ -n "${{ github.event.inputs.season }}" ]; then
+            ARGS="$ARGS --season ${{ github.event.inputs.season }}"
+          fi
+          npx tsx src/index.ts $ARGS
+
+      - name: Upload updated database
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ncaaf-oracle-db
+          path: data/oracle.sqlite
+          retention-days: 90
+          overwrite: true

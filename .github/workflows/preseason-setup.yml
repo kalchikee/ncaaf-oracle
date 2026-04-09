@@ -1,0 +1,81 @@
+name: Preseason Setup
+
+on:
+  # Manual trigger (run once in early August)
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Season year (e.g. 2025)'
+        required: true
+        default: '2025'
+  # Auto-trigger: August 1 each year
+  schedule:
+    - cron: '0 12 1 8 *'
+
+jobs:
+  preseason-setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Python dependencies
+        run: pip install -r python/requirements.txt
+
+      - name: Build training dataset
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: python python/build_dataset.py
+
+      - name: Train logistic regression model
+        run: python python/train_model.py
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ncaaf-oracle-model
+          path: data/model/
+          retention-days: 365
+          overwrite: true
+
+      - name: Run preseason setup (load priors, compute Elo, init DB)
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SEASON_YEAR: ${{ github.event.inputs.season || '2025' }}
+        run: |
+          npx tsx src/index.ts --alert preseason \
+            --season ${{ github.event.inputs.season || '2025' }}
+
+      - name: Upload database artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ncaaf-oracle-db
+          path: data/oracle.sqlite
+          retention-days: 365
+          overwrite: true
+
+      - name: Commit model weights to repository
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "NCAAF Oracle"
+          git add data/model/ data/preseason/ || true
+          git diff --staged --quiet || git commit -m "chore: update model weights and preseason priors for ${{ github.event.inputs.season || '2025' }} season"
+          git push || true

@@ -1,0 +1,71 @@
+name: Weekend Recap
+
+on:
+  schedule:
+    # Sunday 11 PM ET (Monday 3 AM UTC) — after Saturday games are final
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      week:
+        description: 'Override week number (optional)'
+        required: false
+      season:
+        description: 'Override season year (optional)'
+        required: false
+
+jobs:
+  recap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Download database artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncaaf-oracle-db
+          path: data/
+        continue-on-error: true
+
+      - name: Download model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ncaaf-oracle-model
+          path: data/model/
+        continue-on-error: true
+
+      - name: Run weekend recap
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SEASON_YEAR: ${{ vars.SEASON_YEAR || '2025' }}
+        run: |
+          ARGS="--alert recap"
+          if [ -n "${{ github.event.inputs.week }}" ]; then
+            ARGS="$ARGS --week ${{ github.event.inputs.week }}"
+          fi
+          if [ -n "${{ github.event.inputs.season }}" ]; then
+            ARGS="$ARGS --season ${{ github.event.inputs.season }}"
+          fi
+          npx tsx src/index.ts $ARGS
+
+      - name: Upload updated database
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ncaaf-oracle-db
+          path: data/oracle.sqlite
+          retention-days: 90
+          overwrite: true

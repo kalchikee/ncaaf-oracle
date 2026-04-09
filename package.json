@@ -1,0 +1,33 @@
+{
+  "name": "ncaaf-oracle",
+  "version": "4.1.0",
+  "description": "NCAAF Oracle v4.1 - ML prediction engine with Monte Carlo simulation, SP+ features, prior-year bootstrap",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/index.ts",
+    "dev": "tsx src/index.ts",
+    "predict": "tsx src/index.ts --alert picks",
+    "recap": "tsx src/index.ts --alert recap",
+    "preseason": "tsx src/index.ts --alert preseason",
+    "test-discord": "tsx src/index.ts --alert test",
+    "train": "python python/train_model.py",
+    "build-dataset": "python python/build_dataset.py",
+    "clean": "rimraf dist cache/*.json"
+  },
+  "dependencies": {
+    "sql.js": "^1.12.0",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "pino": "^8.19.0",
+    "pino-pretty": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/sql.js": "^1.4.9",
+    "@types/node": "^20.12.7",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.4.5"
+  }
+}
