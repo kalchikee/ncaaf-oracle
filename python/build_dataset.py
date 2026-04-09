@@ -77,10 +77,11 @@ def extract_features(game: dict, sp_map: dict, epa_map: dict,
                       recruit_map: dict, return_map: dict,
                       home_elo: float, away_elo: float) -> Optional[dict]:
     """Extract feature vector for one game."""
-    home = game.get("home_team", "").lower()
-    away = game.get("away_team", "").lower()
-    home_pts = game.get("home_points")
-    away_pts = game.get("away_points")
+    # CFBD API returns camelCase keys
+    home = game.get("homeTeam", game.get("home_team", "")).lower()
+    away = game.get("awayTeam", game.get("away_team", "")).lower()
+    home_pts = game.get("homePoints", game.get("home_points"))
+    away_pts = game.get("awayPoints", game.get("away_points"))
 
     if home_pts is None or away_pts is None:
         return None
@@ -171,6 +172,8 @@ def extract_features(game: dict, sp_map: dict, epa_map: dict,
         "week": game.get("week", 0),
         "home_team": home,
         "away_team": away,
+        "neutral_site": 1 if game.get("neutralSite", game.get("neutral_site", False)) else 0,
+        "conference_game": 1 if game.get("conferenceGame", game.get("conference_game", False)) else 0,
     }
 
     return f
@@ -224,12 +227,12 @@ def main():
         return_map = fetch_returning(season)
 
         # Sort games by week to update Elo in order
-        games.sort(key=lambda g: (g.get("week", 99), g.get("start_date", "")))
+        games.sort(key=lambda g: (g.get("week", 99), g.get("startDate", g.get("start_date", ""))))
 
         season_rows = []
         for game in games:
-            home = game.get("home_team", "").lower()
-            away = game.get("away_team", "").lower()
+            home = game.get("homeTeam", game.get("home_team", "")).lower()
+            away = game.get("awayTeam", game.get("away_team", "")).lower()
             home_elo = elo.get(home)
             away_elo = elo.get(away)
 
@@ -243,8 +246,8 @@ def main():
             season_rows.append(feat)
 
             # Update Elo
-            h_pts = game.get("home_points")
-            a_pts = game.get("away_points")
+            h_pts = game.get("homePoints", game.get("home_points"))
+            a_pts = game.get("awayPoints", game.get("away_points"))
             if h_pts is not None and a_pts is not None:
                 elo.update(home, away, int(h_pts), int(a_pts))
 

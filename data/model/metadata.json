@@ -1,0 +1,10 @@
+{
+  "version": "4.1.0",
+  "train_seasons": "2018-2024",
+  "avg_brier": 0.1678633114416087,
+  "avg_accuracy": 0.7488549090433287,
+  "avg_log_loss": 0.506357703696168,
+  "n_features": 38,
+  "regularization": "L2, C=0.75",
+  "trained_at": "2026-04-09T02:28:18.164915Z"
+}

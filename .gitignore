@@ -2,6 +2,7 @@ node_modules/
 dist/
 cache/
 data/*.sqlite
+data/training_dataset.*
 .env
 *.log
 __pycache__/
