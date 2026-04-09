@@ -13,24 +13,24 @@ const SEASON_YEAR = parseInt(process.env.SEASON_YEAR ?? String(new Date().getFul
 // 2025 season: Aug 23, 2025 → Jan 19, 2026 (CFP Championship)
 export const SEASON_WINDOWS: SeasonWindow[] = [
   {
+    season: 2026,
+    seasonStart: '2026-08-29',
+    seasonEnd: '2027-01-19',
+    preseasonSetup: '2026-08-01',
+    active: true,
+  },
+  {
     season: 2025,
     seasonStart: '2025-08-23',
     seasonEnd: '2026-01-20',
     preseasonSetup: '2025-08-01',
-    active: true,
+    active: false,
   },
   {
     season: 2024,
     seasonStart: '2024-08-24',
     seasonEnd: '2025-01-21',
     preseasonSetup: '2024-08-01',
-    active: false,
-  },
-  {
-    season: 2026,
-    seasonStart: '2026-08-29',
-    seasonEnd: '2027-01-19',
-    preseasonSetup: '2026-08-01',
     active: false,
   },
 ];
@@ -93,9 +93,33 @@ const WEEK_SCHEDULE_2025: Array<{ week: number; start: string; end: string; labe
   { week: 20, start: '2026-01-12', end: '2026-01-20', label: 'CFP National Championship' },
 ];
 
+const WEEK_SCHEDULE_2026: Array<{ week: number; start: string; end: string; label: string }> = [
+  { week: 0,  start: '2026-08-29', end: '2026-08-31', label: 'Week 0' },
+  { week: 1,  start: '2026-09-03', end: '2026-09-07', label: 'Week 1' },
+  { week: 2,  start: '2026-09-10', end: '2026-09-14', label: 'Week 2' },
+  { week: 3,  start: '2026-09-17', end: '2026-09-21', label: 'Week 3' },
+  { week: 4,  start: '2026-09-24', end: '2026-09-28', label: 'Week 4' },
+  { week: 5,  start: '2026-10-01', end: '2026-10-05', label: 'Week 5' },
+  { week: 6,  start: '2026-10-08', end: '2026-10-12', label: 'Week 6' },
+  { week: 7,  start: '2026-10-15', end: '2026-10-19', label: 'Week 7' },
+  { week: 8,  start: '2026-10-22', end: '2026-10-26', label: 'Week 8' },
+  { week: 9,  start: '2026-10-29', end: '2026-11-02', label: 'Week 9' },
+  { week: 10, start: '2026-11-05', end: '2026-11-09', label: 'Week 10' },
+  { week: 11, start: '2026-11-12', end: '2026-11-16', label: 'Week 11' },
+  { week: 12, start: '2026-11-19', end: '2026-11-23', label: 'Week 12' },
+  { week: 13, start: '2026-11-26', end: '2026-11-30', label: 'Week 13 (Rivalry Week)' },
+  { week: 14, start: '2026-12-03', end: '2026-12-07', label: 'Week 14' },
+  { week: 15, start: '2026-12-05', end: '2026-12-06', label: 'Conference Championships' },
+  { week: 16, start: '2026-12-12', end: '2026-12-19', label: 'Bowl Season (Early)' },
+  { week: 17, start: '2026-12-19', end: '2026-12-31', label: 'Bowl Season' },
+  { week: 18, start: '2027-01-01', end: '2027-01-04', label: 'New Year\'s Six Bowls' },
+  { week: 19, start: '2027-01-04', end: '2027-01-11', label: 'CFP Quarterfinals / Semifinals' },
+  { week: 20, start: '2027-01-11', end: '2027-01-19', label: 'CFP National Championship' },
+];
+
 export function getCurrentWeek(season: number, date = new Date()): WeekInfo | null {
   const dateStr = date.toISOString().slice(0, 10);
-  const schedule = season === 2025 ? WEEK_SCHEDULE_2025 : WEEK_SCHEDULE_2025; // extend for future seasons
+  const schedule = season === 2026 ? WEEK_SCHEDULE_2026 : WEEK_SCHEDULE_2025;
 
   // Find the upcoming week (games this week or next)
   // Tuesday cron: predict games happening this coming weekend
@@ -185,7 +209,7 @@ export function checkSeasonGate(date = new Date()): boolean {
 
 export function getRecapWeek(season: number, date = new Date()): WeekInfo | null {
   const dateStr = date.toISOString().slice(0, 10);
-  const schedule = season === 2025 ? WEEK_SCHEDULE_2025 : WEEK_SCHEDULE_2025;
+  const schedule = season === 2026 ? WEEK_SCHEDULE_2026 : WEEK_SCHEDULE_2025;
 
   // Find the week that ended most recently before today
   let recapWeek = [...schedule].reverse().find(w => w.end < dateStr);
