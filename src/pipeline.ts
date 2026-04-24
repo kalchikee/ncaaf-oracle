@@ -19,6 +19,7 @@ import { initDatabase, getDb, upsertPrediction, saveDatabase,
   getSeasonAccuracy, loadEloRatingsFromDB, saveEloRatingsToDB } from './db/database.js';
 import { sendPredictionsEmbed } from './alerts/discord.js';
 import { getCurrentSeasonWindow, getCurrentWeek } from './season/seasonManager.js';
+import { writePredictionsFile } from './kalshi/predictionsFile.js';
 import type { CFBDGame, Prediction, WeekInfo } from './types.js';
 
 // ─── Pipeline ─────────────────────────────────────────────────────────────────
@@ -125,6 +126,15 @@ export async function runPredictionPipeline(
   saveDatabase();
   saveEloRatingsToDB(db, eloRatings);
   saveEloRatings(eloRatings);
+
+  // ── Step 8b: Write predictions JSON for kalshi-safety ────────────────────
+  try {
+    const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const outPath = writePredictionsFile(todayET, predictions);
+    logger.info({ outPath, count: predictions.length }, 'Wrote kalshi-safety predictions JSON');
+  } catch (err) {
+    logger.warn({ err }, 'Failed to write predictions JSON (continuing)');
+  }
 
   // ── Step 9: Send Discord embed ────────────────────────────────────────────
   const accuracy = getSeasonAccuracy(db, season);
