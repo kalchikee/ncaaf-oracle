@@ -271,7 +271,7 @@ export function filterTop25Games(games: CFBDGame[], top25: Set<string>): CFBDGam
 
 // ─── Lines / odds from CFBD ───────────────────────────────────────────────────
 
-interface CFBDLine {
+export interface CFBDLine {
   id: number;
   season: number;
   week: number;

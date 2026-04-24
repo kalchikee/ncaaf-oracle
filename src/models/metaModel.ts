@@ -123,7 +123,7 @@ function sigmoid(x: number): number {
 
 function featuresToArray(features: NCAAFFeatureVector): number[] {
   return FEATURE_NAMES.map(name => {
-    const val = (features as Record<string, number>)[name];
+    const val = (features as unknown as Record<string, number>)[name];
     return val ?? 0;
   });
 }
