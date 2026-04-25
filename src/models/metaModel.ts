@@ -105,7 +105,59 @@ export function loadModel(): boolean {
     if (existsSync(scalerPath)) _scaler = JSON.parse(readFileSync(scalerPath, 'utf-8')) as ModelScaler;
     if (existsSync(calibPath)) _calibration = JSON.parse(readFileSync(calibPath, 'utf-8')) as CalibrationMap;
     if (existsSync(metaPath)) _metadata = JSON.parse(readFileSync(metaPath, 'utf-8')) as ModelMetadata;
-    logger.info({ version: _metadata?.version, trained_at: _metadata?.trained_at }, 'Model loaded');
+
+    // ─── Sanity checks ─────────────────────────────────────────────────────
+    // Coefficients are positional and indexed by FEATURE_NAMES. Lengths MUST
+    // agree with FEATURE_NAMES, the JSON's own feature_names, and the scaler.
+    // Any drift means standardized z-scores would be paired with the wrong
+    // coefficient — silently producing garbage predictions.
+    const tsLen = FEATURE_NAMES.length;
+    const coefLen = Array.isArray(_model.coefficients) ? _model.coefficients.length : -1;
+    const jsonNamesLen = Array.isArray(_model.feature_names) ? _model.feature_names.length : -1;
+    const meanLen = _scaler && Array.isArray(_scaler.mean) ? _scaler.mean.length : tsLen;
+    const scaleLen = _scaler && Array.isArray(_scaler.scale) ? _scaler.scale.length : tsLen;
+
+    if (coefLen !== tsLen || meanLen !== tsLen || scaleLen !== tsLen ||
+        (jsonNamesLen >= 0 && jsonNamesLen !== tsLen)) {
+      logger.error(
+        { tsFeatures: tsLen, coefficients: coefLen, jsonFeatureNames: jsonNamesLen, mean: meanLen, scale: scaleLen },
+        'ML model load aborted: feature-count mismatch between FEATURE_NAMES, coefficients, and scaler — refusing to use the model.',
+      );
+      _model = null;
+      _scaler = null;
+      _calibration = null;
+      return false;
+    }
+
+    // All-zero / NaN sanity check on coefficient array.
+    let nonZero = 0;
+    let hasNaN = false;
+    for (const v of _model.coefficients) {
+      if (typeof v !== 'number' || Number.isNaN(v)) { hasNaN = true; break; }
+      if (v !== 0) nonZero++;
+    }
+    if (hasNaN) {
+      logger.error({ features: coefLen }, 'ML model has NaN/non-numeric coefficients — refusing to use the model.');
+      _model = null;
+      _scaler = null;
+      _calibration = null;
+      return false;
+    }
+    if (nonZero === 0) {
+      logger.error(
+        { features: coefLen },
+        'ML model loaded but ALL coefficients are zero — JSON shape likely mismatched. Refusing to use the model.',
+      );
+      _model = null;
+      _scaler = null;
+      _calibration = null;
+      return false;
+    }
+
+    logger.info(
+      { version: _metadata?.version, trained_at: _metadata?.trained_at, features: coefLen, nonZeroCoeffs: nonZero },
+      'Model loaded',
+    );
     return true;
   } catch (err) {
     logger.error({ err }, 'Failed to load model');
