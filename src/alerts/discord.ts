@@ -123,6 +123,18 @@ export async function sendPredictionsEmbed(
 
   const fields: DiscordField[] = [];
 
+  // ── Season hit-rate ─────────────────────────────────────────────────────
+  // Pulled from the same SeasonAccuracy source the weekly recap uses, so
+  // morning + recap agree on the number. Only shown when the season has
+  // graded predictions (off-season → totalPicks === 0 → hidden).
+  if (accuracy && accuracy.totalPicks > 0) {
+    fields.push({
+      name: '📊 Season Accuracy',
+      value: `**${(accuracy.accuracy * 100).toFixed(1)}%** · ${accuracy.correctPicks}/${accuracy.totalPicks} predictions correct this season`,
+      inline: false,
+    });
+  }
+
   // ── Running season record ─────────────────────────────────────────────────
   if (accuracy && accuracy.totalPicks > 0) {
     fields.push({
