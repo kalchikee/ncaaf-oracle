@@ -5,6 +5,7 @@
 
 import fetch from 'node-fetch';
 import { logger } from '../logger.js';
+import { getConfidenceBuckets, getDb } from '../db/database.js';
 import { classifyConfidence, detectEdge, formatEdge, formatProb, formatSpread } from '../models/marketEdge.js';
 import type { Prediction, SeasonAccuracy, WeekInfo } from '../types.js';
 
@@ -133,6 +134,27 @@ export async function sendPredictionsEmbed(
       value: `**${(accuracy.accuracy * 100).toFixed(1)}%** · ${accuracy.correctPicks}/${accuracy.totalPicks} predictions correct this season`,
       inline: false,
     });
+
+    // ── Calibration by confidence bucket ─────────────────────────────────────
+    // For each pick-side probability band (50-60%, 60-70%, ...) show how the
+    // model's stated probability tracks reality (e.g. of picks tagged 70-80%,
+    // how many actually won). Empty buckets are filtered out server-side so
+    // the embed stays compact early-season.
+    try {
+      const buckets = getConfidenceBuckets(getDb(), weekInfo.season);
+      if (buckets.length > 0) {
+        const lines = buckets.map(b =>
+          `**${b.label}** · ${b.correct}/${b.total} (${(b.accuracy * 100).toFixed(1)}%)`
+        );
+        fields.push({
+          name: '🎯 Calibration by confidence',
+          value: lines.join('\n'),
+          inline: false,
+        });
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to compute confidence buckets — skipping');
+    }
   }
 
   // ── Running season record ─────────────────────────────────────────────────
